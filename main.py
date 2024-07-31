@@ -2,13 +2,16 @@ import tkinter as tk
 from tkinter import ttk
 from tkcalendar import DateEntry
 from tkinter import StringVar
+from db import create_connection, create_tables, insert_categories
 
-# set variables
-BG_COLOR = "#f0f4f8"
-HEADER_COLOR = "#1f4e79"
-ENTRY_COLOR = "#e0e7ef"
-TEXT_COLOR = "#333333"
-BORDER_COLOR = "#cccccc"
+# set connection with database
+con = create_connection("expense_tracked.db")
+
+if con:
+    create_tables(con)
+    # categories = [("Żywność",), ("Dom",), ("Transport",), ("Rozrywka",), ("Zdrowie",), ("Edukacja",), ("Zwierzęta",), ("Inne",)]
+    # insert_categories(con, categories)
+    con.close()
 
 root = tk.Tk()
 
