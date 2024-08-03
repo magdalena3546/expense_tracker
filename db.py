@@ -4,7 +4,7 @@ import sqlite3
 def create_connection(file_db):
     try:
         con = sqlite3.connect(file_db)
-        print(f"Connected with database: {file_db}")
+        # print(f"Connected with database: {file_db}")
         return con
     
     except sqlite3.Error as e:
@@ -25,7 +25,7 @@ def create_tables(con):
             )
 
         cursor.execute ('''
-            CREATE TABLE IF NOT EXISTS incomes (
+            CREATE TABLE IF NOT EXISTS income (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
                     amount INTEGER NOT NULL,

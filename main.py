@@ -3,9 +3,9 @@ from tkinter import ttk
 from tkcalendar import DateEntry
 from tkinter import StringVar, messagebox
 from db import create_connection, create_tables, insert_categories
-
+from datetime import datetime
 # set connection with database
-con = create_connection("expense_tracked.db")
+con = create_connection("expenses_trucker.db")
 
 if con:
     create_tables(con)
@@ -40,6 +40,22 @@ def show_main():
     ttk.Label(main_frame, text="Wydatki: 0 zł").grid(row=0, column=0)
     ttk.Label(main_frame, text="Przychody: 0 zł").grid(row=1, column=0)
     ttk.Label(main_frame, text="Dochód: 0 zł").grid(row=2, column=0)
+# functions to create treeview
+def create_treeview(frame):
+    columns = ("name", "amount", "category", "date", "type")
+    tree = ttk.Treeview(frame, columns = columns, show="headings")
+    tree.heading("name", text="nazwa")
+    tree.heading("amount", text="wartość")
+    tree.heading("category", text="kategoria")
+    tree.heading("date", text="data")
+    tree.heading("type", text="typ")
+    tree.column("name", width=150)
+    tree.column("amount", width=100)
+    tree.column("category", width=100)
+    tree.column("date", width=100)
+    tree.column("type", width=100)
+    tree.grid(row=0, column=0, pady=20, sticky="nsew")
+    return tree
 # Functions for buttons
 def add_button_function():
     if(expense_button.winfo_viewable() and income_button.winfo_viewable()):
@@ -73,16 +89,20 @@ def submit_income():
         messagebox.showerror("Błąd", "Podaj kwotę w liczbie!")
         return
     
-    con = create_connection("expense_tracked.db")
+    con = create_connection("expenses_trucker.db")
     cursor = con.cursor()
 
     cursor.execute(
-        "INSERT INTO incomes (name, amount, date) VALUES (?, ?, ?)",
+        "INSERT INTO income (name, amount, date) VALUES (?, ?, ?)",
         (name, amount, date_str)
     )
     con.commit()
     con.close()
     messagebox.showinfo("Sukces", "Dodano przychód.")
+
+    entry_income_name.delete(0, tk.END)
+    entry_income_amount.delete(0, tk.END)
+    entry_income_date.set_date(datetime.today())
 
 def submit_expense():
     name = entry_expense_name.get()
@@ -95,12 +115,12 @@ def submit_expense():
         messagebox.showerror("Błąd", "Wypełnij wszytskie pola!")
         return
     try:
-        amount = float(amount)
+        amount = float(amount) 
     except ValueError:
         messagebox.showerror("Błąd", "Podaj kwotę w liczbie!")
         return
     
-    con = create_connection("expense_tracked.db")
+    con = create_connection("expenses_trucker.db")
     cursor = con.cursor()
 
     cursor.execute("SELECT id FROM categories WHERE name = ?", (category,))
@@ -113,6 +133,12 @@ def submit_expense():
     con.commit()
     con.close()
     messagebox.showinfo("Sukces", "Dodano wydatek.")
+
+    
+    entry_expense_name.delete(0, tk.END)
+    entry_expense_amount.delete(0, tk.END)
+    entry_expense_date.set_date(datetime.today())
+    categories.set("Wybierz")
 # Function for create close button
 
 def create_close_button(parent, command, **parameters):
@@ -130,8 +156,29 @@ def close():
 def show_transactions():
     for widget in main_frame.winfo_children():
         widget.destroy()
-        ttk.Label(main_frame, text="Lista transakcji").grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
-    
+    ttk.Label(main_frame, text="Lista transakcji").grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
+    tree = create_treeview(main_frame)
+    try:
+        con = create_connection("expenses_trucker.db")
+        cursor = con.cursor()
+        cursor.execute("""
+            SELECT name, amount, '' as category, date, 'przychód' as type FROM income
+        """)
+        income_rows = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT e.name, e.amount, c.name as category, e.date, 'wydatek' as type FROM expenses e
+            JOIN categories c ON e.category_id = c.id
+        """)
+        expenses_rows = cursor.fetchall()
+
+        rows =income_rows + expenses_rows
+        for row in rows:
+            tree.insert('', tk.END, values=row)
+        con.close()
+    except Exception as e:
+        print(e)
+        print("Błąd podczas pobierania danych")
 # Function to show visualizations
 def show_visualizations():
     for widget in main_frame.winfo_children():
