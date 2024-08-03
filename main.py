@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from tkcalendar import DateEntry
-from tkinter import StringVar
+from tkinter import StringVar, messagebox
 from db import create_connection, create_tables, insert_categories
 
 # set connection with database
@@ -9,8 +9,8 @@ con = create_connection("expense_tracked.db")
 
 if con:
     create_tables(con)
-    # categories = [("Żywność",), ("Dom",), ("Transport",), ("Rozrywka",), ("Zdrowie",), ("Edukacja",), ("Zwierzęta",), ("Inne",)]
-    # insert_categories(con, categories)
+    categories = [("Żywność",), ("Dom",), ("Transport",), ("Rozrywka",), ("Zdrowie",), ("Edukacja",), ("Zwierzęta",), ("Inne",)]
+    insert_categories(con, categories)
     con.close()
 
 root = tk.Tk()
@@ -31,6 +31,15 @@ root.rowconfigure(0, weight=1)
 # Set the window icon
 root.iconbitmap("images/icon.ico")
 
+#Function for main view
+def show_main():
+    #Remove all widgets from main_frame
+    for widget in main_frame.winfo_children():
+        widget.destroy()
+    #Add content to maim_frame
+    ttk.Label(main_frame, text="Wydatki: 0 zł").grid(row=0, column=0)
+    ttk.Label(main_frame, text="Przychody: 0 zł").grid(row=1, column=0)
+    ttk.Label(main_frame, text="Dochód: 0 zł").grid(row=2, column=0)
 # Functions for buttons
 def add_button_function():
     if(expense_button.winfo_viewable() and income_button.winfo_viewable()):
@@ -51,11 +60,59 @@ def add_expense():
     expense_frame.grid(row=0, column=1, pady=20, padx=20,sticky="nsew")
     
 def submit_income():
-    pass
+    name = entry_income_name.get()
+    amount = entry_income_amount.get()
+    date = entry_income_date.get_date()
+    date_str = date.strftime('%Y-%m-%d')
+    if not name or not amount or not date_str:
+        messagebox.showerror("Błąd", "Wypełnij wszytskie pola!")
+        return
+    try:
+        amount = float(amount)
+    except ValueError:
+        messagebox.showerror("Błąd", "Podaj kwotę w liczbie!")
+        return
+    
+    con = create_connection("expense_tracked.db")
+    cursor = con.cursor()
+
+    cursor.execute(
+        "INSERT INTO incomes (name, amount, date) VALUES (?, ?, ?)",
+        (name, amount, date_str)
+    )
+    con.commit()
+    con.close()
+    messagebox.showinfo("Sukces", "Dodano przychód.")
 
 def submit_expense():
-    pass
+    name = entry_expense_name.get()
+    amount = entry_expense_amount.get()
+    date = entry_expense_date.get_date()
+    date_str = date.strftime('%Y-%m-%d')
+    category = categories.get()
 
+    if not name or not amount or not date_str or category == "Wybierz":
+        messagebox.showerror("Błąd", "Wypełnij wszytskie pola!")
+        return
+    try:
+        amount = float(amount)
+    except ValueError:
+        messagebox.showerror("Błąd", "Podaj kwotę w liczbie!")
+        return
+    
+    con = create_connection("expense_tracked.db")
+    cursor = con.cursor()
+
+    cursor.execute("SELECT id FROM categories WHERE name = ?", (category,))
+    category_id = cursor.fetchone()
+
+    cursor.execute(
+        "INSERT INTO expenses (name, amount, date, category_id) VALUES (?, ?, ?, ?)",
+        (name, amount, date_str, category_id[0])
+    )
+    con.commit()
+    con.close()
+    messagebox.showinfo("Sukces", "Dodano wydatek.")
 # Function for create close button
 
 def create_close_button(parent, command, **parameters):
@@ -69,14 +126,26 @@ def close():
         expense_frame.grid_forget()
     main_frame.grid(row=0, column=1, pady=20, padx=20,sticky="nsew")
 
-#Set main
+# Function to show transactions
+def show_transactions():
+    for widget in main_frame.winfo_children():
+        widget.destroy()
+        ttk.Label(main_frame, text="Lista transakcji").grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
+    
+# Function to show visualizations
+def show_visualizations():
+    for widget in main_frame.winfo_children():
+        widget.destroy()
+        ttk.Label(main_frame, text="Wizualizacje").grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
+#Set menu
+menu_bar = tk.Menu(root)
+menu_bar.add_command(label="Transakcje",command=show_transactions)
+menu_bar.add_command(label="Wizualizacje", command=show_visualizations)
+root.config(menu=menu_bar)
+
+#Main frame
 main_frame = ttk.Frame(root)
 main_frame.grid(row=0, column=1, pady=20, padx=20,sticky="nsew")
-
-ttk.Label(main_frame, text="Wydatki: 0 zł").grid(row=0, column=0)
-ttk.Label(main_frame, text="Przychody: 0 zł").grid(row=1, column=0)
-ttk.Label(main_frame, text="Dochód: 0 zł").grid(row=2, column=0)
-
 # Create buttons
 add_button= ttk.Button(root,
                 text="+", 
@@ -124,8 +193,13 @@ ttk.Label(expense_frame, text="Kategoria").grid(row=4, column=0, pady=5)
 category_var = StringVar()
 categories = ttk.Combobox(expense_frame, textvariable=category_var, width= 15,state="readonly")
 categories["values"] = ["Żywność", "Dom", "Transport", "Rozrywka", "Zdrowie", "Edukacja", "Zwierzęta", "Inne"]
+
+# categories_values = ["Żywność", "Dom", "Transport", "Rozrywka", "Zdrowie", "Edukacja", "Zwierzęta", "Inne"]
+# categories = ttk.Combobox(main_frame, values=categories_values, state="readonly")
+categories.set("Wybierz")
 categories.grid(row=4, column=1, pady=5)
 
 ttk.Button(expense_frame, text="Submit", command=submit_expense).grid(row=5, column=0, columnspan=2, pady=10)
 
+show_main()
 root.mainloop()
