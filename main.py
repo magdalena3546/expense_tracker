@@ -42,13 +42,15 @@ def show_main():
     ttk.Label(main_frame, text="Dochód: 0 zł").grid(row=2, column=0)
 # functions to create treeview
 def create_treeview(frame):
-    columns = ("name", "amount", "category", "date", "type")
+    columns = ("id", "name", "amount", "category", "date", "type")
     tree = ttk.Treeview(frame, columns = columns, show="headings")
+    tree.heading("id", text="id")
     tree.heading("name", text="nazwa")
     tree.heading("amount", text="wartość")
     tree.heading("category", text="kategoria")
     tree.heading("date", text="data")
     tree.heading("type", text="typ")
+    tree.column("id", width=0, stretch=False)
     tree.column("name", width=150)
     tree.column("amount", width=100)
     tree.column("category", width=100)
@@ -91,18 +93,31 @@ def submit_income():
     
     con = create_connection("expenses_trucker.db")
     cursor = con.cursor()
-
-    cursor.execute(
-        "INSERT INTO income (name, amount, date) VALUES (?, ?, ?)",
-        (name, amount, date_str)
-    )
-    con.commit()
-    con.close()
-    messagebox.showinfo("Sukces", "Dodano przychód.")
-
-    entry_income_name.delete(0, tk.END)
-    entry_income_amount.delete(0, tk.END)
-    entry_income_date.set_date(datetime.today())
+    try:
+        if hasattr(income_frame, "trans_id"):
+            cursor.execute(""" 
+                UPDATE income
+                SET name = ?, amount = ?, date = ?
+                WHERE id = ?
+            """, (name, amount, date, income_frame.trans_id))
+            del income_frame.trans_id
+            messagebox.showinfo("Sukces", "Przychód został zaktualizowany.")
+        else:
+            cursor.execute(
+                "INSERT INTO income (name, amount, date) VALUES (?, ?, ?)",
+                (name, amount, date_str)
+            )
+            messagebox.showinfo("Sukces", "Dodano nowy przychód.")
+        con.commit()
+    except Exception as e:
+        messagebox.showerror("Błąd", "Przychód nie został zapisany.")
+    finally:
+        con.close()
+        entry_income_name.delete(0, tk.END)
+        entry_income_amount.delete(0, tk.END)
+        entry_income_date.set_date(datetime.today())
+        income_frame.grid_forget()
+        main_frame.grid(row=0, column=1, pady=20, padx=20,sticky="nsew")
 
 def submit_expense():
     name = entry_expense_name.get()
@@ -125,20 +140,36 @@ def submit_expense():
 
     cursor.execute("SELECT id FROM categories WHERE name = ?", (category,))
     category_id = cursor.fetchone()
-
-    cursor.execute(
-        "INSERT INTO expenses (name, amount, date, category_id) VALUES (?, ?, ?, ?)",
-        (name, amount, date_str, category_id[0])
-    )
-    con.commit()
-    con.close()
-    messagebox.showinfo("Sukces", "Dodano wydatek.")
-
-    
-    entry_expense_name.delete(0, tk.END)
-    entry_expense_amount.delete(0, tk.END)
-    entry_expense_date.set_date(datetime.today())
-    categories.set("Wybierz")
+    if category_id is None:
+        messagebox.showerror("Błąd", "Nie znaleziono kategorii.")
+        return
+    try:
+        if hasattr(expense_frame, "trans_id"):
+            cursor.execute(""" 
+                UPDATE expenses
+                SET name = ?, amount = ?, date = ?, category_id = ?
+                WHERE id = ?
+            """, (name, amount, date, category_id[0], expense_frame.trans_id))
+            del expense_frame.trans_id
+            messagebox.showinfo("Sukces", "Zaktualizowano wydatek.")
+        else:
+            cursor.execute(
+                "INSERT INTO expenses (name, amount, date, category_id) VALUES (?, ?, ?, ?)",
+                (name, amount, date_str, category_id[0])
+            )
+            messagebox.showinfo("Sukces", "Dodano wydatek.")
+        con.commit()
+    except Exception as e:
+        print(e)
+        messagebox.showerror("Błąd", "Wydatek nie został zapisany")
+    finally: 
+        con.close()
+        entry_expense_name.delete(0, tk.END)
+        entry_expense_amount.delete(0, tk.END)
+        entry_expense_date.set_date(datetime.today())
+        categories.set("Wybierz")
+        expense_frame.grid_forget()
+        main_frame.grid(row=0, column=1, pady=20, padx=20,sticky="nsew")
 # Function for create close button
 
 def create_close_button(parent, command, **parameters):
@@ -162,12 +193,12 @@ def show_transactions():
         con = create_connection("expenses_trucker.db")
         cursor = con.cursor()
         cursor.execute("""
-            SELECT name, amount, '' as category, date, 'przychód' as type FROM income
+            SELECT id, name, amount, '' as category, date, 'przychód' as type FROM income
         """)
         income_rows = cursor.fetchall()
 
         cursor.execute("""
-            SELECT e.name, e.amount, c.name as category, e.date, 'wydatek' as type FROM expenses e
+            SELECT e.id, e.name, e.amount, c.name as category, e.date, 'wydatek' as type FROM expenses e
             JOIN categories c ON e.category_id = c.id
         """)
         expenses_rows = cursor.fetchall()
@@ -176,9 +207,75 @@ def show_transactions():
         for row in rows:
             tree.insert('', tk.END, values=row)
         con.close()
+
+        # Add button for delete and edit transaction
+        button_frame = ttk.Frame(main_frame)
+        button_frame.grid(row=1, column=0, padx=20, pady=20, sticky="ew")
+        edit_btn = ttk.Button(button_frame, text= "Edytuj zaznaczoną transakcję", command=lambda: edit_transaction(tree))
+        edit_btn.pack(side="left", padx=(0, 10), ipadx=10, ipady=5)
+        delete_btn = ttk.Button(button_frame, text="Usuń zaznaczoną transakcję", command=lambda: delete_transaction(tree))
+        delete_btn.pack(side="left", ipadx=10, ipady=5)
     except Exception as e:
         print(e)
         print("Błąd podczas pobierania danych")
+# Function to delete transaction
+def delete_transaction(tree):
+    selected_item = tree.selection()
+    if not selected_item:
+        messagebox.showerror("Błąd", "Nie zaznaczono transakcji do usunięcia.")
+        return
+    
+    values = tree.item(selected_item[0], "values")
+    id_trans, name, amount, category, date, type_trans = values
+    confirm = messagebox.askyesno("Potwierdzenie", "Czy na pewno chcesz usunąć tę transakcję?")
+    if not confirm:
+        return
+    try:
+        con = create_connection("expenses_trucker.db")
+        cursor = con.cursor()
+
+        if type_trans == "przychód":
+            cursor.execute("DELETE FROM income WHERE id=?", (id_trans))
+        else:
+            cursor.execute("DELETE FROM expenses WHERE id=?", (id_trans))
+        con.commit()
+        con.close()
+
+        tree.delete(selected_item[0])
+        messagebox.showinfo("Sukces", "Usunięto transakcję.")
+    except Exception as e:
+        print(e)
+        messagebox("Błąd", "Wystąpił błąd podczas usuwania transakcji.")
+# Function to edit transaction:
+def edit_transaction(tree):
+    selected_item = tree.selection()
+    if not selected_item:
+        messagebox.showerror("Błąd", "Nie zaznaczono transakcji do usunięcia.")
+        return
+    main_frame.grid_forget()
+    values = tree.item(selected_item[0], "values")
+    id_trans, name, amount, category, date, type_trans = values
+
+    if type_trans == "przychód":
+        entry_income_name.delete(0, tk.END)
+        entry_income_name.insert(0, name)
+        entry_income_amount.delete(0, tk.END)
+        entry_income_amount.insert(0, amount)
+        entry_income_date.set_date(date)
+        income_frame.grid(row=0, column=1, pady=20, padx=20,sticky="nsew")
+        income_frame.trans_id = id_trans
+        
+    else:
+        entry_expense_name.delete(0, tk.END)
+        entry_expense_name.insert(0, name)
+        entry_expense_amount.delete(0, tk.END)
+        entry_expense_amount.insert(0, amount)
+        entry_expense_date.set_date(date)
+        categories.set(category)
+        expense_frame.grid(row=0, column=1, pady=20, padx=20,sticky="nsew")
+        expense_frame.trans_id = id_trans
+
+    
 # Function to show visualizations
 def show_visualizations():
     for widget in main_frame.winfo_children():
@@ -186,10 +283,10 @@ def show_visualizations():
         ttk.Label(main_frame, text="Wizualizacje").grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
 #Set menu
 menu_bar = tk.Menu(root)
+menu_bar.add_command(label="Podsumowanie",command=show_main)
 menu_bar.add_command(label="Transakcje",command=show_transactions)
 menu_bar.add_command(label="Wizualizacje", command=show_visualizations)
 root.config(menu=menu_bar)
-
 #Main frame
 main_frame = ttk.Frame(root)
 main_frame.grid(row=0, column=1, pady=20, padx=20,sticky="nsew")
@@ -219,7 +316,7 @@ ttk.Label(income_frame, text="Wartość").grid(row=2, column=0, pady=5)
 entry_income_amount = ttk.Entry(income_frame)
 entry_income_amount.grid(row = 2, column = 1, pady=5)
 ttk.Label(income_frame, text="Data").grid(row=3, column=0, pady=5)
-entry_income_date = DateEntry(income_frame, width=12, background = "darkblue", foreground="white", borderwith=2)
+entry_income_date = DateEntry(income_frame, width=12, background = "darkblue", foreground="white", borderwith=2, date_pattern = "yyyy-mm-dd")
 entry_income_date.grid(row = 3, column = 1, pady=5, sticky="w")
 ttk.Button(income_frame, text="Submit", command=submit_income).grid(row=4, column = 0, columnspan=2, pady=10)
 
@@ -234,15 +331,12 @@ ttk.Label(expense_frame, text="Wartość").grid(row=2, column=0, pady=5)
 entry_expense_amount = ttk.Entry(expense_frame)
 entry_expense_amount.grid(row=2, column=1)
 ttk.Label(expense_frame, text="Data").grid(row=3, column=0, pady=5)
-entry_expense_date = DateEntry(expense_frame, width=12, background="darkblue", foreground="white", borderwith=2)
+entry_expense_date = DateEntry(expense_frame, width=12, background="darkblue", foreground="white", borderwith=2, date_pattern = "yyyy-mm-dd")
 entry_expense_date.grid(row=3, column=1, pady=5, sticky="w")
 ttk.Label(expense_frame, text="Kategoria").grid(row=4, column=0, pady=5)
 category_var = StringVar()
 categories = ttk.Combobox(expense_frame, textvariable=category_var, width= 15,state="readonly")
 categories["values"] = ["Żywność", "Dom", "Transport", "Rozrywka", "Zdrowie", "Edukacja", "Zwierzęta", "Inne"]
-
-# categories_values = ["Żywność", "Dom", "Transport", "Rozrywka", "Zdrowie", "Edukacja", "Zwierzęta", "Inne"]
-# categories = ttk.Combobox(main_frame, values=categories_values, state="readonly")
 categories.set("Wybierz")
 categories.grid(row=4, column=1, pady=5)
 
