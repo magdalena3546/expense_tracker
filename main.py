@@ -2,10 +2,10 @@ import tkinter as tk
 from tkinter import ttk
 from tkcalendar import DateEntry
 from tkinter import StringVar, messagebox
-from db import create_connection, create_tables, insert_categories
+from db import create_connection, create_tables, insert_categories, get_summary, get_monthly_summary
 from datetime import datetime
 # set connection with database
-con = create_connection("expenses_trucker.db")
+con = create_connection("expenses_tracker.db")
 
 if con:
     create_tables(con)
@@ -16,7 +16,7 @@ if con:
 root = tk.Tk()
 
 # Set title
-root.title("Expense Trucker")
+root.title("Expense tracker")
 
 # Set styles
 root.geometry("600x400")
@@ -27,19 +27,32 @@ style.theme_use("vista")
 
 # Define grid
 root.columnconfigure((0, 1), weight=1)
-root.rowconfigure(0, weight=1)
+# root.rowconfigure(2, weight=1)
 # Set the window icon
 root.iconbitmap("images/icon.ico")
 
+#Main frame
+main_frame = ttk.Frame(root)
 #Function for main view
 def show_main():
+    today = datetime.today()
+    total_expenses, total_income, total = get_summary()
+    total_monthly_expenses, total_monthly_income, total_monthly = get_monthly_summary(today.month, today.year)
     #Remove all widgets from main_frame
     for widget in main_frame.winfo_children():
         widget.destroy()
     #Add content to maim_frame
-    ttk.Label(main_frame, text="Wydatki: 0 zł").grid(row=0, column=0)
-    ttk.Label(main_frame, text="Przychody: 0 zł").grid(row=1, column=0)
-    ttk.Label(main_frame, text="Dochód: 0 zł").grid(row=2, column=0)
+    ttk.Label(main_frame, text="Konto").grid(row=0, column=0, padx=(10,30), pady=10)
+    ttk.Label(main_frame, text=f"Przychody: {total_income:.2f} zł").grid(row=1, column=0, padx=(10,30), pady=10)
+    ttk.Label(main_frame, text=f"Wydatki: {total_expenses:.2f} zł").grid(row=2, column=0, padx=(10,30), pady=10)
+    ttk.Label(main_frame, text=f"Dochód: {total:.2f} zł").grid(row=3, column=0, padx=(10,30), pady=10)
+
+    ttk.Label(main_frame, text="Podsumowanie miesięczne").grid(row=0, column=1, padx=10, pady=10)
+    ttk.Label(main_frame, text=f"Przychody: {total_monthly_income:.2f} zł").grid(row=1, column=1, padx=10, pady=10)
+    ttk.Label(main_frame, text=f"Wydatki: {total_monthly_expenses:.2f} zł").grid(row=2, column=1, padx=10, pady=10)
+    ttk.Label(main_frame, text=f"Dochód: {total_monthly:.2f} zł").grid(row=3, column=1, padx=10, pady=10)
+
+    main_frame.grid(row=0, column=1, pady=20, padx=20,sticky="nsew")
 # functions to create treeview
 def create_treeview(frame):
     columns = ("id", "name", "amount", "category", "date", "type")
@@ -70,10 +83,16 @@ def add_button_function():
         income_button.place(x=x, y=y-60)
 
 def add_income():
+    add_button.place_forget()
+    income_button.place_forget()
+    expense_button.place_forget()
     main_frame.grid_forget()
     income_frame.grid(row=0, column=1, pady=20, padx=20,sticky="nsew")
 
 def add_expense():
+    add_button.place_forget()
+    income_button.place_forget()
+    expense_button.place_forget()
     main_frame.grid_forget()
     expense_frame.grid(row=0, column=1, pady=20, padx=20,sticky="nsew")
     
@@ -91,7 +110,7 @@ def submit_income():
         messagebox.showerror("Błąd", "Podaj kwotę w liczbie!")
         return
     
-    con = create_connection("expenses_trucker.db")
+    con = create_connection("expenses_tracker.db")
     cursor = con.cursor()
     try:
         if hasattr(income_frame, "trans_id"):
@@ -117,7 +136,8 @@ def submit_income():
         entry_income_amount.delete(0, tk.END)
         entry_income_date.set_date(datetime.today())
         income_frame.grid_forget()
-        main_frame.grid(row=0, column=1, pady=20, padx=20,sticky="nsew")
+        show_main()
+        add_button.place(x=500, y=350)
 
 def submit_expense():
     name = entry_expense_name.get()
@@ -135,7 +155,7 @@ def submit_expense():
         messagebox.showerror("Błąd", "Podaj kwotę w liczbie!")
         return
     
-    con = create_connection("expenses_trucker.db")
+    con = create_connection("expenses_tracker.db")
     cursor = con.cursor()
 
     cursor.execute("SELECT id FROM categories WHERE name = ?", (category,))
@@ -169,7 +189,8 @@ def submit_expense():
         entry_expense_date.set_date(datetime.today())
         categories.set("Wybierz")
         expense_frame.grid_forget()
-        main_frame.grid(row=0, column=1, pady=20, padx=20,sticky="nsew")
+        show_main()
+        add_button.place(x=500, y=350)
 # Function for create close button
 
 def create_close_button(parent, command, **parameters):
@@ -181,7 +202,8 @@ def close():
         income_frame.grid_forget()
     else: 
         expense_frame.grid_forget()
-    main_frame.grid(row=0, column=1, pady=20, padx=20,sticky="nsew")
+    show_main()
+    add_button.place(x=500, y=350)
 
 # Function to show transactions
 def show_transactions():
@@ -190,7 +212,7 @@ def show_transactions():
     ttk.Label(main_frame, text="Lista transakcji").grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
     tree = create_treeview(main_frame)
     try:
-        con = create_connection("expenses_trucker.db")
+        con = create_connection("expenses_tracker.db")
         cursor = con.cursor()
         cursor.execute("""
             SELECT id, name, amount, '' as category, date, 'przychód' as type FROM income
@@ -231,7 +253,7 @@ def delete_transaction(tree):
     if not confirm:
         return
     try:
-        con = create_connection("expenses_trucker.db")
+        con = create_connection("expenses_tracker.db")
         cursor = con.cursor()
 
         if type_trans == "przychód":
@@ -287,9 +309,7 @@ menu_bar.add_command(label="Podsumowanie",command=show_main)
 menu_bar.add_command(label="Transakcje",command=show_transactions)
 menu_bar.add_command(label="Wizualizacje", command=show_visualizations)
 root.config(menu=menu_bar)
-#Main frame
-main_frame = ttk.Frame(root)
-main_frame.grid(row=0, column=1, pady=20, padx=20,sticky="nsew")
+
 # Create buttons
 add_button= ttk.Button(root,
                 text="+", 
