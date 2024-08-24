@@ -80,10 +80,14 @@ def get_monthly_summary(month, year):
     cursor = con.cursor()
     month_str = f"{month:02d}"
     year_str = str(year)
-    cursor.execute("SELECT SUM(amount) FROM expenses WHERE strftime('%m', date) = ? AND strftime('%Y', date) = ?", (month_str, year_str))
+    cursor.execute('''SELECT SUM(amount) FROM expenses 
+                WHERE strftime('%m', substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2)) = ? 
+                AND strftime('%Y', substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2)) = ?''', (month_str, year_str))
     total_monthly_expenses = cursor.fetchone()[0] or 0
 
-    cursor.execute("SELECT SUM(amount) FROM income WHERE strftime('%m', date) = ? AND strftime('%Y', date) = ?", (month_str, year_str))
+    cursor.execute('''SELECT SUM(amount) FROM income 
+                WHERE strftime('%m', substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2)) = ? 
+                AND strftime('%Y', substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2)) = ?''', (month_str, year_str))
     total_monthly_income = cursor.fetchone()[0] or 0
 
     total_monthly = total_monthly_income - total_monthly_expenses
