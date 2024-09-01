@@ -1,7 +1,7 @@
 import tkinter as tk  
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
-# from tkcalendar import DateEntry
+from visualizations import create_donut_chart
 from tkinter import StringVar, messagebox
 from db import create_connection, create_tables, insert_categories, get_summary, get_monthly_summary
 from datetime import datetime
@@ -17,20 +17,19 @@ if con:
     con.close()
 
 root = ttk.Window(themename="superhero")
-window_width= int(root.winfo_screenwidth() * .4)
-window_height = int(root.winfo_screenheight() * .4)
-root.geometry(f"{window_width}x{window_height}")
-
+#set size and position of window
+window_width = 1400
+window_height = 1300
+position_right = int(root.winfo_screenwidth()/2  - window_width/2)
+position_down = int(root.winfo_screenheight()/2 - window_height/2)
+root.geometry(f"{window_width}x{window_height}+{position_right}+{position_down}")
+root.option_add("*Font", "Helvetica 10")
 # Set title
 root.title("Expense tracker")
 root.resizable(False, False)
 # # Set styles
-# root.geometry("600x400")
-# root.resizable(False, False)
-
 # Define grid
 root.columnconfigure((0, 1), weight=1)
-# root.rowconfigure(2, weight=1)
 # Set the window icon
 root.iconbitmap("images/icon.ico")
 
@@ -47,32 +46,39 @@ def show_main():
         widget.destroy()
     #Add content to maim_frame
     summary_frame= ttk.Frame(main_frame, padding=(30, 30), relief="solid", borderwidth=2)
-    summary_frame.grid(row=0, column=0, padx=10, pady=10, sticky="w", columnspan=2)
+    summary_frame.grid(row=1, column=0, padx=10, pady=10, sticky="ew", columnspan=2)
 
     ttk.Label(summary_frame, text="Podsumowanie", font=("Helvetica, 14")).grid(row=0, column=0, pady=5, sticky="w")
-    ttk.Label(summary_frame, text="Przychody: ", font=("Helvetica, 10")).grid(row=1, column=0,  pady=5, sticky="w")
-    ttk.Label(summary_frame, text=f"{total_income:.2f} zł", font=("Helvetica, 10"), bootstyle="success").grid(row=1, column=1, pady=5, sticky="e")
-    ttk.Label(summary_frame, text="Wydatki: ", font=("Helvetica, 10")).grid(row=2, column=0,  pady=5, sticky="w")
-    ttk.Label(summary_frame, text=f"{total_expenses:.2f} zł", font=("Helvetica, 10"), bootstyle="danger").grid(row=2, column=1, pady=5, sticky="e")
-    ttk.Label(summary_frame, text="Dochód: ", font=("Helvetica, 10")).grid(row=3, column=0, pady=5, sticky="w")
-    ttk.Label(summary_frame, text=f"{total:.2f} zł", font=("Helvetica, 10"), bootstyle="primary").grid(row=3, column=1, pady=5, sticky="e")
+    ttk.Label(summary_frame, text="Przychody: ").grid(row=1, column=0,  pady=5, sticky="w")
+    ttk.Label(summary_frame, text=f"{total_income:.2f} zł", bootstyle="success").grid(row=1, column=1, pady=5, sticky="e")
+    ttk.Label(summary_frame, text="Wydatki: ").grid(row=2, column=0,  pady=5, sticky="w")
+    ttk.Label(summary_frame, text=f"{total_expenses:.2f} zł", bootstyle="danger").grid(row=2, column=1, pady=5, sticky="e")
+    ttk.Label(summary_frame, text="Dochód: ").grid(row=3, column=0, pady=5, sticky="w")
+    ttk.Label(summary_frame, text=f"{total:.2f} zł", bootstyle="primary").grid(row=3, column=1, pady=5, sticky="e")
+    chart_frame = ttk.Frame(summary_frame, padding=(10, 10))
+    chart_frame.grid(row=0, column=2, rowspan=4, padx=10, pady=10, sticky="nsew")
+    create_donut_chart(chart_frame, total_expenses, total_income)
 
     monthly_summary_frame = ttk.Frame(main_frame, padding=(30, 30), relief="solid", borderwidth=2)
-    monthly_summary_frame.grid(row=0, column=2, padx=10, pady=10, sticky="w", columnspan=2)
+    monthly_summary_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew", columnspan=2)
 
     ttk.Label(monthly_summary_frame, text="Bieżący miesiąc", font=("Helvetica, 14")).grid(row=0, column=0, pady=5, sticky="w")
-    ttk.Label(monthly_summary_frame, text="Przychody: ", font=("Helvetica, 10")).grid(row=1, column=0, pady=5, sticky="w")
-    ttk.Label(monthly_summary_frame, text=f"{total_monthly_income:.2f} zł", font=("Helvetica, 10"), bootstyle="success").grid(row=1, column=1, pady=5, sticky="e")
-    ttk.Label(monthly_summary_frame, text="Wydatki: ", font=("Helvetica, 10")).grid(row=2, column=0, pady=5, sticky="w")
-    ttk.Label(monthly_summary_frame, text=f"{total_monthly_expenses:.2f} zł", font=("Helvetica, 10"), bootstyle="danger").grid(row=2, column=1, pady=5, sticky="e")
-    ttk.Label(monthly_summary_frame, text="Dochód: ", font=("Helvetica, 10")).grid(row=3, column=0, pady=5, sticky="w")
-    ttk.Label(monthly_summary_frame, text=f"{total_monthly:.2f} zł", font=("Helvetica, 10"), bootstyle="primary").grid(row=3, column=1, pady=5, sticky="e")
+    ttk.Label(monthly_summary_frame, text="Przychody: ").grid(row=1, column=0, pady=5, sticky="w")
+    ttk.Label(monthly_summary_frame, text=f"{total_monthly_income:.2f} zł", bootstyle="success").grid(row=1, column=1, pady=5, sticky="e")
+    ttk.Label(monthly_summary_frame, text="Wydatki: ").grid(row=2, column=0, pady=5, sticky="w")
+    ttk.Label(monthly_summary_frame, text=f"{total_monthly_expenses:.2f} zł", bootstyle="danger").grid(row=2, column=1, pady=5, sticky="e")
+    ttk.Label(monthly_summary_frame, text="Dochód: ").grid(row=3, column=0, pady=5, sticky="w")
+    ttk.Label(monthly_summary_frame, text=f"{total_monthly:.2f} zł", bootstyle="primary").grid(row=3, column=1, pady=5, sticky="e")
+    chart_frame_month = ttk.Frame(monthly_summary_frame, padding=(10, 10))
+    chart_frame_month.grid(row=0, column=2, rowspan=4, padx=10, pady=10, sticky="nsew")
+    create_donut_chart(chart_frame_month, total_monthly_expenses, total_monthly_income)
     # Create buttons
     add_button= ttk.Button(main_frame,
                     text="+", 
-                    command=add_button_function
+                    command=add_button_function,
+                    padding=(20, 10)
                     )
-    add_button.grid(row=4, column=1, sticky="e", padx=10, pady=(80,10))
+    add_button.grid(row=3, column=0, sticky="e", padx=10, pady=(80,10))
 
     income_button = ttk.Button(main_frame,
                             text="Przychód",
@@ -223,7 +229,7 @@ def submit_expense():
 # Function for create close button
 
 def create_close_button(parent, command):
-    return ttk.Button(parent, text="X", command=command, style="danger.Outline.TButton").grid(row=0, column=2, padx=20, pady=20)
+    return ttk.Button(parent, text="X", command=command, style="danger.Outline.TButton", padding=(20, 10)).grid(row=0, column=2, padx=20, pady=20)
 
 # Function to close forms
 def close():
@@ -238,7 +244,7 @@ def close():
 def show_transactions():
     for widget in main_frame.winfo_children():
         widget.destroy()
-    ttk.Label(main_frame, text="Lista transakcji").grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
+    ttk.Label(main_frame, text="Lista transakcji", font="Helvetica, 14").grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
     tree = create_treeview(main_frame)
     tree.grid(row=1, column=0, padx=20, pady=20, sticky="nsew")
     try:
@@ -345,41 +351,41 @@ root.config(menu=menu_bar)
 
 
 # Set form for Income
-income_frame = ttk.Frame(root)
+income_frame = ttk.Frame(root, padding=20)
 close_button_income = create_close_button(income_frame, close)
-ttk.Label(income_frame, text="Dodaj przychód").grid(row=0, column=0, columnspan=2, pady=10)
-ttk.Label(income_frame, text="Nazwa").grid(row=1, column=0, pady=5)
+ttk.Label(income_frame, text="Dodaj przychód").grid(row=0, column=0, columnspan=2, pady=30)
+ttk.Label(income_frame, text="Nazwa").grid(row=1, column=0, pady=30, padx=5, sticky="w")
 entry_income_name = ttk.Entry(income_frame)
-entry_income_name.grid(row = 1, column = 1, pady=5)
-ttk.Label(income_frame, text="Wartość").grid(row=2, column=0, pady=5)
+entry_income_name.grid(row = 1, column = 1, pady=30, padx=5, sticky="e")
+ttk.Label(income_frame, text="Wartość").grid(row=2, column=0, pady=30, padx=5, sticky="w")
 entry_income_amount = ttk.Entry(income_frame)
-entry_income_amount.grid(row = 2, column = 1, pady=5)
-ttk.Label(income_frame, text="Data").grid(row=3, column=0, pady=5)
+entry_income_amount.grid(row = 2, column = 1, pady=30, padx=5, sticky="e")
+ttk.Label(income_frame, text="Data").grid(row=3, column=0, pady=30, padx=5, sticky="w")
 entry_income_date = ttk.DateEntry(income_frame, width=12)
-entry_income_date.grid(row = 3, column = 1, pady=5, sticky="w")
-ttk.Button(income_frame, text="Submit", command=submit_income, style="info.Outline.TButton").grid(row=4, column = 0, columnspan=2, pady=10)
+entry_income_date.grid(row = 3, column = 1, pady=30, padx=5, sticky="w")
+ttk.Button(income_frame, text="Submit", command=submit_income, style="info.Outline.TButton", padding=20).grid(row=4, column = 0, columnspan=2, pady=30)
 
 # Set form for Expense
 expense_frame = ttk.Frame(root)
 close_button_expense = create_close_button(expense_frame, close)
-ttk.Label(expense_frame, text="Dodaj wydatek").grid(row=0, column=0, columnspan=2, pady=10)
-ttk.Label(expense_frame, text="Nazwa").grid(row=1, column=0, pady=5)
+ttk.Label(expense_frame, text="Dodaj wydatek").grid(row=0, column=0, columnspan=2, pady=30)
+ttk.Label(expense_frame, text="Nazwa").grid(row=1, column=0, pady=30, padx=5, sticky="w")
 entry_expense_name = ttk.Entry(expense_frame)
-entry_expense_name.grid(row=1, column=1)
-ttk.Label(expense_frame, text="Wartość").grid(row=2, column=0, pady=5)
+entry_expense_name.grid(row=1, column=1, pady=30, padx=5, sticky="w")
+ttk.Label(expense_frame, text="Wartość").grid(row=2, column=0, pady=30, padx=5, sticky="w")
 entry_expense_amount = ttk.Entry(expense_frame)
-entry_expense_amount.grid(row=2, column=1)
-ttk.Label(expense_frame, text="Data").grid(row=3, column=0, pady=5)
-entry_expense_date = ttk.DateEntry(expense_frame, width=12)
-entry_expense_date.grid(row=3, column=1, pady=5, sticky="w")
-ttk.Label(expense_frame, text="Kategoria").grid(row=4, column=0, pady=5)
+entry_expense_amount.grid(row=2, column=1, pady=30, padx=5, sticky="e")
+ttk.Label(expense_frame, text="Data").grid(row=4, column=0, pady=30, padx=5, sticky="w")
+entry_expense_date = ttk.DateEntry(expense_frame, width=15)
+entry_expense_date.grid(row=4, column=1, pady=30, padx=5, sticky="e")
+ttk.Label(expense_frame, text="Kategoria").grid(row=3, column=0, pady=30, padx=5, sticky="w")
 category_var = StringVar()
-categories = ttk.Combobox(expense_frame, textvariable=category_var, width= 15,state="readonly")
+categories = ttk.Combobox(expense_frame, textvariable=category_var, width= 17,state="readonly")
 categories["values"] = ["Żywność", "Dom", "Transport", "Rozrywka", "Zdrowie", "Edukacja", "Zwierzęta", "Inne"]
 categories.set("Wybierz")
-categories.grid(row=4, column=1, pady=5)
+categories.grid(row=3, column=1, pady=30, padx=5, sticky="e")
 
-ttk.Button(expense_frame, text="Submit", command=submit_expense, style="info.Outline.TButton").grid(row=5, column=0, columnspan=2, pady=10)
+ttk.Button(expense_frame, text="Submit", command=submit_expense, style="info.Outline.TButton", padding=20).grid(row=5, column=0, columnspan=2, pady=30)
 
 show_main()
 root.mainloop()
