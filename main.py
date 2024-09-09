@@ -1,7 +1,7 @@
 import tkinter as tk  
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
-from visualizations import create_donut_chart
+from visualizations import create_pie_chart, create_visualizations
 from tkinter import StringVar, messagebox
 from db import create_connection, create_tables, insert_categories, get_summary, get_monthly_summary
 from datetime import datetime
@@ -57,7 +57,7 @@ def show_main():
     ttk.Label(summary_frame, text=f"{total:.2f} zł", bootstyle="primary").grid(row=3, column=1, pady=5, sticky="e")
     chart_frame = ttk.Frame(summary_frame, padding=(10, 10))
     chart_frame.grid(row=0, column=2, rowspan=4, padx=10, pady=10, sticky="nsew")
-    create_donut_chart(chart_frame, total_expenses, total_income)
+    create_pie_chart(chart_frame, total_expenses, total_income)
 
     monthly_summary_frame = ttk.Frame(main_frame, padding=(30, 30), relief="solid", borderwidth=2)
     monthly_summary_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew", columnspan=2)
@@ -71,7 +71,7 @@ def show_main():
     ttk.Label(monthly_summary_frame, text=f"{total_monthly:.2f} zł", bootstyle="primary").grid(row=3, column=1, pady=5, sticky="e")
     chart_frame_month = ttk.Frame(monthly_summary_frame, padding=(10, 10))
     chart_frame_month.grid(row=0, column=2, rowspan=4, padx=10, pady=10, sticky="nsew")
-    create_donut_chart(chart_frame_month, total_monthly_expenses, total_monthly_income)
+    create_pie_chart(chart_frame_month, total_monthly_expenses, total_monthly_income)
     # Create buttons
     add_button= ttk.Button(main_frame,
                     text="+", 
@@ -339,9 +339,10 @@ def edit_transaction(tree):
     
 # Function to show visualizations
 def show_visualizations():
-    for widget in main_frame.winfo_children():
-        widget.destroy()
-        ttk.Label(main_frame, text="Wizualizacje").grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
+    total_expenses, total_income, total = get_summary()
+    today = datetime.today()
+    total_monthly_expenses, total_monthly_income, total_monthly = get_monthly_summary(today.month, today.year)
+    create_visualizations(root, total_expenses, total_income, total_monthly_expenses, total_monthly_income)
 #Set menu
 menu_bar = ttk.Menu(root)
 menu_bar.add_command(label="Podsumowanie",command=show_main)

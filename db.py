@@ -94,3 +94,39 @@ def get_monthly_summary(month, year):
 
     con.close()
     return total_monthly_expenses, total_monthly_income, total_monthly
+
+
+def get_expenses_by_category():
+    con = create_connection("expenses_tracker.db")
+    cursor = con.cursor()
+
+    cursor.execute("""
+        SELECT c.name, SUM(e.amount)
+        FROM expenses e
+        JOIN categories c ON e.category_id = c.id
+        GROUP BY c.name
+    """)
+    rows = cursor.fetchall()
+    categories = [row[0] for row in rows]
+    amounts = [row[1] for row in rows]
+
+    con.close()
+    return categories, amounts
+
+def get_expenses_by_time():
+    con = create_connection("expenses_tracker.db")
+    cursor = con.cursor()
+
+    cursor.execute("""
+        SELECT date, SUM(amount)
+        FROM expenses 
+        GROUP BY date
+        ORDER BY date
+    """)
+
+    rows = cursor.fetchall()
+    dates = [row[0] for row in rows]
+    amounts = [row[1] for row in rows]
+
+    con.close()
+    return dates, amounts
