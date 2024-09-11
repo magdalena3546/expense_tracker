@@ -121,7 +121,7 @@ def get_expenses_by_time():
         SELECT date, SUM(amount)
         FROM expenses 
         GROUP BY date
-        ORDER BY date
+        ORDER BY strftime('%Y-%m-%d', substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2)) ASC
     """)
 
     rows = cursor.fetchall()
