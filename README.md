@@ -37,10 +37,11 @@ In the "Visualizations" tab, you can view detailed charts that help analyze your
 ## Screenshots
 ### Main Dashboard
 
-![image](https://github.com/user-attachments/assets/636b0953-ef45-474f-bbee-2c82f272d9bc)
+<img src="https://github.com/user-attachments/assets/636b0953-ef45-474f-bbee-2c82f272d9bc" alt="image description" width="500"/>
+
 ### Visualizations
 
-![image](https://github.com/user-attachments/assets/7b70b26c-832f-4cfc-81ca-3a424c69bbeb)
+<img src="https://github.com/user-attachments/assets/7b70b26c-832f-4cfc-81ca-3a424c69bbeb" alt="image description" width="500"/>
 
 ## Future Improvements
 - User Authentication: Add a login system to allow multiple users to track their finances individually.
